@@ -1,9 +1,9 @@
 #version 330
 
-layout(location = 1) in vec3 aNormal;
+in vec3 vViewSpaceNormal;
 
-out vec3 vColor;
+out vec3 fColor;
 
 void main() {
-	vColor = aNormal;
+	fColor = vViewSpaceNormal;
 }

@@ -5,6 +5,8 @@
 #include <imgui.h>
 #include <glmlv/imgui_impl_glfw_gl3.hpp>
 
+#include <glm/gtc/type_ptr.hpp>
+
 int Application::run()
 {
     float clearColor[3] = { 0, 0, 0 };
@@ -16,6 +18,40 @@ int Application::run()
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
         // Put here rendering code
+
+        glm::mat4 ProjMatrix = glm::perspective(
+            70.f,
+            (float) m_nWindowWidth / m_nWindowHeight,
+            0.1f,
+            100.0f);
+        glm::mat4 ViewMatrix = this->m_viewController.getViewMatrix();
+
+
+
+        glm::mat4 MVMatrix;
+        glm::mat4 MVPMatrix;
+        glm::mat4 NormalMatrix;
+
+        glm::mat4 cubeMatrix = glm::translate(glm::mat4(1), glm::vec3(0.f, 0.f, -5.f));
+
+        MVMatrix = ViewMatrix * cubeMatrix;
+        MVPMatrix = ProjMatrix * MVMatrix;
+        NormalMatrix = glm::transpose(glm::inverse(MVMatrix));
+
+        glUniformMatrix4fv(this->MVMatrixLoc, 
+            1, 
+            GL_FALSE,
+            glm::value_ptr(MVMatrix));
+        glUniformMatrix4fv(this->MVPMatrixLoc, 
+            1, 
+            GL_FALSE,
+            glm::value_ptr(MVPMatrix));
+        glUniformMatrix4fv(this->NormalMatrixLoc, 
+            1, 
+            GL_FALSE,
+            glm::value_ptr(NormalMatrix));
+
+
         glBindVertexArray(this->m_cubeVAO);
 
             glDrawElements(
@@ -25,6 +61,25 @@ int Application::run()
             nullptr);
 
         glBindVertexArray(0);
+
+        glm::mat4 sphereMatrix = glm::translate(glm::mat4(1), glm::vec3(-1.f, 0.f, -10.f));
+        
+        MVMatrix = ViewMatrix * sphereMatrix;
+
+        NormalMatrix = glm::transpose(glm::inverse(MVMatrix));
+
+        glUniformMatrix4fv(this->MVMatrixLoc, 
+            1, 
+            GL_FALSE,
+            glm::value_ptr(MVMatrix));
+        glUniformMatrix4fv(this->MVPMatrixLoc, 
+            1, 
+            GL_FALSE,
+            glm::value_ptr(ProjMatrix * MVMatrix));
+        glUniformMatrix4fv(this->NormalMatrixLoc, 
+            1, 
+            GL_FALSE,
+            glm::value_ptr(NormalMatrix));
 
         glBindVertexArray(this->m_sphereVAO);
 
@@ -63,7 +118,7 @@ int Application::run()
         auto ellapsedTime = glfwGetTime() - seconds;
         auto guiHasFocus = ImGui::GetIO().WantCaptureMouse || ImGui::GetIO().WantCaptureKeyboard;
         if (!guiHasFocus) {
-            //viewController.update(float(ellapsedTime))
+            this->m_viewController.update(float(ellapsedTime));
         }
     }
 
@@ -74,16 +129,21 @@ Application::Application(int argc, char** argv):
     m_AppPath { glmlv::fs::path{ argv[0] } },
     m_AppName { m_AppPath.stem().string() },
     m_ImGuiIniFilename { m_AppName + ".imgui.ini" },
-    m_ShadersRootPath { m_AppPath.parent_path() / "shaders" }
+    m_ShadersRootPath { m_AppPath.parent_path() / "shaders" },
+    m_viewController { glmlv::ViewController(this->m_GLFWHandle.window()) }
 
 {
     this->m_program = glmlv::compileProgram(
-        { this->m_ShadersRootPath / "glmlv" / "forward.vs.glsl", 
-          this->m_ShadersRootPath / "glmlv" / "forward.fs.glsl" })
+        { this->m_ShadersRootPath / "forward-renderer" / "forward.vs.glsl", 
+          this->m_ShadersRootPath / "forward-renderer" / "forward.fs.glsl" });
 
     const GLint POSITION_ATTR_LOCATION = 0;
     const GLint NORMAL_ATTR_LOCATION = 1;
     const GLint TEX_ATTR_LOCATION = 2;
+
+    this->MVPMatrixLoc = this->m_program.getUniformLocation("uModelViewProjMatrix");
+    this->MVMatrixLoc = this->m_program.getUniformLocation("uModelViewMatrix");
+    this->NormalMatrixLoc = this->m_program.getUniformLocation("uNormalMatrix");
 
     glEnable(GL_DEPTH_TEST);
 
@@ -99,8 +159,8 @@ Application::Application(int argc, char** argv):
     
         glBufferStorage(
             GL_ARRAY_BUFFER, 
-            sizeof(cubeGeometry.vertexBuffer), 
-            &(cubeGeometry.vertexBuffer),
+            cubeGeometry.vertexBuffer.size() * sizeof(glmlv::Vertex3f3f2f), 
+            cubeGeometry.vertexBuffer.data(),
             0);
 
     glBindBuffer(GL_ARRAY_BUFFER, 0);
@@ -113,8 +173,8 @@ Application::Application(int argc, char** argv):
 
         glBufferStorage(
             GL_ELEMENT_ARRAY_BUFFER,
-            sizeof(cubeGeometry.indexBuffer),
-            &(cubeGeometry.indexBuffer),
+            cubeGeometry.indexBuffer.size() * sizeof(uint32_t),
+            cubeGeometry.indexBuffer.data(),
             0);
 
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
@@ -172,8 +232,8 @@ Application::Application(int argc, char** argv):
     
         glBufferStorage(
             GL_ARRAY_BUFFER, 
-            sizeof(sphereGeometry.vertexBuffer), 
-            &(sphereGeometry.vertexBuffer),
+            sphereGeometry.vertexBuffer.size() * sizeof(glmlv::Vertex3f3f2f), 
+            sphereGeometry.vertexBuffer.data(),
             0);
 
     glBindBuffer(GL_ARRAY_BUFFER, 0);
@@ -186,8 +246,8 @@ Application::Application(int argc, char** argv):
 
         glBufferStorage(
             GL_ELEMENT_ARRAY_BUFFER,
-            sizeof(sphereGeometry.indexBuffer),
-            &(sphereGeometry.indexBuffer),
+            sphereGeometry.indexBuffer.size() * sizeof(uint32_t),
+            sphereGeometry.indexBuffer.data(),
             0);
 
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
