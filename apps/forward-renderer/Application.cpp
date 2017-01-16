@@ -19,78 +19,118 @@ int Application::run()
 
         // Put here rendering code
 
-        glm::mat4 ProjMatrix = glm::perspective(
+        const auto ProjMatrix = glm::perspective(
             70.f,
             (float) m_nWindowWidth / m_nWindowHeight,
-            0.1f,
+            0.01f,
             100.0f);
-        glm::mat4 ViewMatrix = this->m_viewController.getViewMatrix();
 
-
+        const auto ViewMatrix = this->m_viewController.getViewMatrix();
 
         glm::mat4 MVMatrix;
         glm::mat4 MVPMatrix;
         glm::mat4 NormalMatrix;
 
-        glm::mat4 cubeMatrix = glm::translate(glm::mat4(1), glm::vec3(0.f, 0.f, -5.f));
+		/* Define light variables */
+		/* I use default values define in .hpp */
 
-        MVMatrix = ViewMatrix * cubeMatrix;
-        MVPMatrix = ProjMatrix * MVMatrix;
-        NormalMatrix = glm::transpose(glm::inverse(MVMatrix));
+		/* I have just to do these operations to convert light dir in viewSpace */
+		glUniform3fv(this->directionalLightDirLoc,
+			1,
+			glm::value_ptr(glm::vec3(glm::vec4(glm::normalize(this->u_directionalLightDir), 0))));
 
-        glUniformMatrix4fv(this->MVMatrixLoc, 
-            1, 
-            GL_FALSE,
-            glm::value_ptr(MVMatrix));
-        glUniformMatrix4fv(this->MVPMatrixLoc, 
-            1, 
-            GL_FALSE,
-            glm::value_ptr(MVPMatrix));
-        glUniformMatrix4fv(this->NormalMatrixLoc, 
-            1, 
-            GL_FALSE,
-            glm::value_ptr(NormalMatrix));
+		glUniform3fv(this->directionalLightIntensityLoc,
+			1,
+			glm::value_ptr(glm::vec3(this->u_directionalLightIntensity)));
 
+		glUniform3fv(this->pointLightPositionLoc,
+			1,
+			glm::value_ptr(glm::vec3(glm::vec4(this->u_pointLightPosition, 1))));
 
-        glBindVertexArray(this->m_cubeVAO);
+		glUniform3fv(this->pointLightIntensityLoc,
+			1,
+			glm::value_ptr(glm::vec3(this->u_pointLightIntensity)));
 
-            glDrawElements(
-            GL_TRIANGLES, 
-            this->m_nbCubeIndex,
-            GL_UNSIGNED_INT,
-            nullptr);
+		{
+			/* First, draw the cube */
+			this->m_cubeColor = glm::vec3(0.f, 0.6, 0.75);
 
-        glBindVertexArray(0);
+			glm::mat4 cubeMatrix = glm::translate(glm::mat4(1), glm::vec3(0.f, 0.f, -5.f));
 
-        glm::mat4 sphereMatrix = glm::translate(glm::mat4(1), glm::vec3(-1.f, 0.f, -10.f));
-        
-        MVMatrix = ViewMatrix * sphereMatrix;
+			MVMatrix = ViewMatrix * cubeMatrix;
+			MVPMatrix = ProjMatrix * MVMatrix;
+			NormalMatrix = glm::transpose(glm::inverse(MVMatrix));
 
-        NormalMatrix = glm::transpose(glm::inverse(MVMatrix));
+			/* Send light to fragment shader */
 
-        glUniformMatrix4fv(this->MVMatrixLoc, 
-            1, 
-            GL_FALSE,
-            glm::value_ptr(MVMatrix));
-        glUniformMatrix4fv(this->MVPMatrixLoc, 
-            1, 
-            GL_FALSE,
-            glm::value_ptr(ProjMatrix * MVMatrix));
-        glUniformMatrix4fv(this->NormalMatrixLoc, 
-            1, 
-            GL_FALSE,
-            glm::value_ptr(NormalMatrix));
+			glUniformMatrix4fv(this->MVMatrixLoc,
+				1,
+				GL_FALSE,
+				glm::value_ptr(MVMatrix));
+			glUniformMatrix4fv(this->MVPMatrixLoc,
+				1,
+				GL_FALSE,
+				glm::value_ptr(MVPMatrix));
+			glUniformMatrix4fv(this->NormalMatrixLoc,
+				1,
+				GL_FALSE,
+				glm::value_ptr(NormalMatrix));
 
-        glBindVertexArray(this->m_sphereVAO);
+			glUniform3fv(this->kdLoc,
+				1,
+				glm::value_ptr(this->m_cubeColor));
 
-            glDrawElements(
-            GL_TRIANGLES, 
-            this->m_nbSphereIndex,
-            GL_UNSIGNED_INT,
-            nullptr);
+			glBindVertexArray(this->m_cubeVAO);
 
-        glBindVertexArray(0);
-        
+			glDrawElements(
+				GL_TRIANGLES,
+				this->m_nbCubeIndex,
+				GL_UNSIGNED_INT,
+				nullptr);
+
+			glBindVertexArray(0);
+		}
+		
+		{
+			/* Then, draw a sphere ! */
+
+			this->m_sphereColor = glm::vec3(0.89, 0.1, 0.25);
+
+			glm::mat4 sphereMatrix = glm::translate(glm::mat4(1), glm::vec3(-1.f, 0.f, -10.f));
+
+			MVMatrix = ViewMatrix * sphereMatrix;
+
+			NormalMatrix = glm::transpose(glm::inverse(MVMatrix));
+
+			glUniformMatrix4fv(this->MVMatrixLoc,
+				1,
+				GL_FALSE,
+				glm::value_ptr(MVMatrix));
+			glUniformMatrix4fv(this->MVPMatrixLoc,
+				1,
+				GL_FALSE,
+				glm::value_ptr(ProjMatrix * MVMatrix));
+			glUniformMatrix4fv(this->NormalMatrixLoc,
+				1,
+				GL_FALSE,
+				glm::value_ptr(NormalMatrix));
+
+			/* Send light to fragment shader */
+
+			glUniform3fv(this->kdLoc,
+				1,
+				glm::value_ptr(this->m_sphereColor));
+
+			glBindVertexArray(this->m_sphereVAO);
+
+			glDrawElements(
+				GL_TRIANGLES,
+				this->m_nbSphereIndex,
+				GL_UNSIGNED_INT,
+				nullptr);
+
+			glBindVertexArray(0);
+		}        
 
         // GUI code:
         ImGui_ImplGlfwGL3_NewFrame();
@@ -102,6 +142,11 @@ int Application::run()
             if (ImGui::ColorEdit3("clearColor", clearColor)) {
                 glClearColor(clearColor[0], clearColor[1], clearColor[2], 1.f);
             }
+			ImGui::Text("Directional Light");
+			float dirVal[3] = { this->u_directionalLightDir.x, this->u_directionalLightDir.y, this->u_directionalLightDir.z};
+			if (ImGui::SliderFloat3("Direction", dirVal, -1.f, 1.f)) {
+				this->u_directionalLightDir = glm::vec3(dirVal[0], dirVal[1], dirVal[2]);
+			}
             ImGui::End();
         }
 
@@ -141,9 +186,21 @@ Application::Application(int argc, char** argv):
     const GLint NORMAL_ATTR_LOCATION = 1;
     const GLint TEX_ATTR_LOCATION = 2;
 
+	/* Get matrix locations */
     this->MVPMatrixLoc = this->m_program.getUniformLocation("uModelViewProjMatrix");
     this->MVMatrixLoc = this->m_program.getUniformLocation("uModelViewMatrix");
     this->NormalMatrixLoc = this->m_program.getUniformLocation("uNormalMatrix");
+
+	/* Get lighting component locations */
+	this->directionalLightDirLoc = this->m_program.getUniformLocation("uDirectionalLightDir");
+	this->directionalLightIntensityLoc = this->m_program.getUniformLocation("uDirectionalLightIntensity");
+
+	this->pointLightPositionLoc = this->m_program.getUniformLocation("uPointLightPosition");
+	this->pointLightIntensityLoc = this->m_program.getUniformLocation("uPointLightIntensity");
+
+	this->kdLoc = this->m_program.getUniformLocation("uKd");
+
+	this->m_program.use();
 
     glEnable(GL_DEPTH_TEST);
 
@@ -292,8 +349,6 @@ Application::Application(int argc, char** argv):
         glBindBuffer(GL_ARRAY_BUFFER, 0);
 
     glBindVertexArray(0);
-
-    this->m_program.use();
 
     ImGui::GetIO().IniFilename = m_ImGuiIniFilename.c_str(); // At exit, ImGUI will store its windows positions in this file
 }
