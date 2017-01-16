@@ -2,6 +2,7 @@
 
 in vec3 vViewSpacePosition;
 in vec3 vViewSpaceNormal;
+in vec2 vTexCoords;
 
 out vec3 fColor;
 
@@ -13,10 +14,15 @@ uniform vec3 uPointLightIntensity;
 
 uniform vec3 uKd; // Object color
 
+uniform sampler2D uKdSampler;
+
 void main() {
 	float distanceToPointLight = length(uPointLightPosition - vViewSpacePosition);
 	vec3 dirToPointLight = (uPointLightPosition - vViewSpacePosition) / distanceToPointLight;
-	fColor = uKd * (uDirectionalLightIntensity * 
+
+	vec3 texturedKd = vec3(vec4(uKd, 0) * texture(uKdSampler, vTexCoords));
+
+	fColor = texturedKd * (uDirectionalLightIntensity * 
 			max(0.f, dot(vViewSpaceNormal, uDirectionalLightDir)) +
 			uPointLightIntensity * max(0.f, dot(vViewSpaceNormal, dirToPointLight)) /
 			(distanceToPointLight * distanceToPointLight));

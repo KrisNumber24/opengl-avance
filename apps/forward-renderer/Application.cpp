@@ -53,7 +53,12 @@ int Application::run()
 
 		{
 			/* First, draw the cube */
-			this->m_cubeColor = glm::vec3(0.f, 0.6, 0.75);
+			this->m_cubeColor = glm::vec3(1, 1, 1);
+
+			glActiveTexture(GL_TEXTURE0);
+			glUniform1i(m_uCubeSamplerLoc, 0);
+			glBindSampler(0, m_cubeSampler);
+			
 
 			glm::mat4 cubeMatrix = glm::translate(glm::mat4(1), glm::vec3(0.f, 0.f, -5.f));
 
@@ -80,6 +85,7 @@ int Application::run()
 				1,
 				glm::value_ptr(this->m_cubeColor));
 
+			glBindTexture(GL_TEXTURE_2D, m_cubeTex);
 			glBindVertexArray(this->m_cubeVAO);
 
 			glDrawElements(
@@ -94,7 +100,12 @@ int Application::run()
 		{
 			/* Then, draw a sphere ! */
 
-			this->m_sphereColor = glm::vec3(0.89, 0.1, 0.25);
+			this->m_sphereColor = glm::vec3(1, 1, 1);
+
+			glActiveTexture(GL_TEXTURE0);
+			glUniform1i(m_uCubeSamplerLoc, 0);
+			glBindSampler(0, m_sphereSampler);
+			glBindTexture(GL_TEXTURE_2D, m_sphereTex);
 
 			glm::mat4 sphereMatrix = glm::translate(glm::mat4(1), glm::vec3(-1.f, 0.f, -10.f));
 
@@ -175,7 +186,8 @@ Application::Application(int argc, char** argv):
     m_AppName { m_AppPath.stem().string() },
     m_ImGuiIniFilename { m_AppName + ".imgui.ini" },
     m_ShadersRootPath { m_AppPath.parent_path() / "shaders" },
-    m_viewController { glmlv::ViewController(this->m_GLFWHandle.window()) }
+    m_viewController { glmlv::ViewController(this->m_GLFWHandle.window()) },
+	m_AssetsRootPath {	m_AppPath.parent_path() / "assets" }
 
 {
     this->m_program = glmlv::compileProgram(
@@ -199,6 +211,33 @@ Application::Application(int argc, char** argv):
 	this->pointLightIntensityLoc = this->m_program.getUniformLocation("uPointLightIntensity");
 
 	this->kdLoc = this->m_program.getUniformLocation("uKd");
+
+	/* Define textures */
+	auto cubeTexImage = glmlv::readImage(m_AssetsRootPath / m_AppName / "textures" / "pika.png");
+	glActiveTexture(GL_TEXTURE0);
+	glGenTextures(1, &m_cubeTex);
+	glBindTexture(GL_TEXTURE_2D, m_cubeTex);
+		glTexStorage2D(GL_TEXTURE_2D, 1, GL_RGB32F, cubeTexImage.width(), cubeTexImage.height());
+		glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, cubeTexImage.width(), cubeTexImage.height(), GL_RGBA, GL_UNSIGNED_BYTE, cubeTexImage.data());
+	glBindTexture(GL_TEXTURE_2D, 0);
+
+	glGenSamplers(1, &m_cubeSampler);
+	glSamplerParameteri(m_cubeSampler, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+	glSamplerParameteri(m_cubeSampler, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+
+	auto sphereTexImage = glmlv::readImage(m_AssetsRootPath / m_AppName / "textures" / "Moon.png");
+	glActiveTexture(GL_TEXTURE0);
+	glGenTextures(1, &m_sphereTex);
+	glBindTexture(GL_TEXTURE_2D, m_sphereTex);
+		glTexStorage2D(GL_TEXTURE_2D, 1, GL_RGB32F, sphereTexImage.width(), sphereTexImage.height());
+		glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, sphereTexImage.width(), sphereTexImage.height(), GL_RGBA, GL_UNSIGNED_BYTE, sphereTexImage.data());
+	glBindTexture(GL_TEXTURE_2D, 0);
+
+	glGenSamplers(1, &m_sphereSampler);
+	glSamplerParameteri(m_sphereSampler, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+	glSamplerParameteri(m_sphereSampler, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+
+	m_uCubeSamplerLoc = m_program.getUniformLocation("uKdSampler");
 
 	this->m_program.use();
 
