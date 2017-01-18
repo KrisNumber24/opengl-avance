@@ -9,6 +9,19 @@
 
 class Application
 {
+
+	struct Mesh {
+		GLuint VBO;
+		GLuint IBO;
+		GLuint nbIndices;
+		GLuint VAO;
+		glm::vec3 materialKd;
+
+		Mesh(GLuint VBO, GLuint IBO, GLuint nbIndices, GLuint VAO, glm::vec3 materialKd) :
+			VBO(VBO), IBO(IBO), nbIndices(nbIndices), VAO(VAO), materialKd(materialKd) {
+		}
+	};
+
 public:
     Application(int argc, char** argv);
 
@@ -18,52 +31,56 @@ public:
 private:
     const size_t m_nWindowWidth = 1280;
     const size_t m_nWindowHeight = 720;
-    glmlv::GLFWHandle m_GLFWHandle{ m_nWindowWidth, m_nWindowHeight, "Template" }; // Note: the handle must be declared before the creation of any object managing OpenGL resource (e.g. GLProgram, GLShader)
+    glmlv::GLFWHandle m_GLFWHandle{ (int) m_nWindowWidth, (int) m_nWindowHeight, "Template" }; // Note: the handle must be declared before the creation of any object managing OpenGL resource (e.g. GLProgram, GLShader)
 
+	/* Paths const */
     const glmlv::fs::path m_AppPath;
     const std::string m_AppName;
     const std::string m_ImGuiIniFilename;
     const glmlv::fs::path m_ShadersRootPath;
 	const glmlv::fs::path m_AssetsRootPath;
 
+	/* Attribute locations const */
+	const GLint POSITION_ATTR_LOCATION = 0;
+	const GLint NORMAL_ATTR_LOCATION = 1;
+	const GLint TEXCOORDS_ATTR_LOCATION = 2;
+
 	/* Transform matrix */
     GLint MVPMatrixLoc;
     GLint MVMatrixLoc;
     GLint NormalMatrixLoc;
 
+
+	/* Shader Program */
+	glmlv::GLProgram m_program;
+
+
 	/* Lighting variables */
-	GLint directionalLightDirLoc;
-	GLint directionalLightIntensityLoc;
-	glm::vec3 u_directionalLightDir = glm::vec3(0.f, 0.f, 1.f);
-	float u_directionalLightIntensity = 1.f;
+	/* Directional Light */
+	GLint m_uDirectionalLight_DirectionLocation;
+	GLint m_uDirectionalLight_IntensityLocation;
+
+	glm::vec3 m_directionalLight_Direction;
+	GLfloat m_directionalLight_Intensity;
+	glm::vec3 m_directionalLight_Color;
+
+	/* Point Light */
+	GLint m_uPointLight_PositionLocation;
+	GLint m_uPointLight_IntensityLocation;
+
+	glm::vec3 m_PointLight_Position;
+	GLfloat m_PointLight_Intensity;
+	glm::vec3 m_PointLight_Color;
 	
-	GLint pointLightPositionLoc;
-	GLint pointLightIntensityLoc;
-	glm::vec3 u_pointLightPosition = glm::vec3(0.f, 0.f, 0.f);
-	float u_pointLightIntensity = 1.f;
 
-	GLint kdLoc;
+	/* Material variables */
+	GLint m_uKdLocation;
 
-    GLuint m_cubeVBO = 0;
-    GLuint m_cubeIBO = 0;
-    GLuint m_cubeVAO = 0;
-    GLuint m_nbCubeIndex = 0;
-	glm::vec3 m_cubeColor = glm::vec3(0, 0, 0);
-	GLuint m_cubeTex;
-	GLuint m_cubeSampler;
-	GLint m_uCubeSamplerLoc;
-
-    GLuint m_sphereVBO = 0;
-    GLuint m_sphereIBO = 0;
-    GLuint m_sphereVAO = 0;
-    GLuint m_nbSphereIndex = 0;
-	glm::vec3 m_sphereColor = glm::vec3(0, 0, 0);
-	GLuint m_sphereTex;
-	GLuint m_sphereSampler;
-	GLint m_uSphereSamplerLoc;
-
+	
+	/* Camera */
     glmlv::ViewController m_viewController;
 
-    glmlv::GLProgram m_program;
+
+	std::vector<Mesh> m_meshes;
 
 };
